@@ -60,51 +60,104 @@ function ModuleSystem.Initialize()
     
     local success = true
     
+    -- First load the Utils module since other modules depend on it
     for _, moduleInfo in ipairs(moduleList) do
-        if (moduleInfo.isServer and not IsDuplicityVersion()) or 
-           (moduleInfo.isClient and IsDuplicityVersion()) then
-            goto continue
+        if moduleInfo.name == "Utils" or moduleInfo.name == "HeistConfig" or moduleInfo.name == "ErrorHandler" then
+            if (moduleInfo.isServer and not IsDuplicityVersion()) or 
+               (moduleInfo.isClient and IsDuplicityVersion()) then
+                goto continue
+            end
+            
+            local status, result = pcall(function()
+                local moduleContent = LoadResourceFile(GetCurrentResourceName(), moduleInfo.path)
+                if not moduleContent then
+                    print(string.format("^1[MODULE SYSTEM] Failed to load module %s: File not found at %s^7", 
+                        moduleInfo.name, moduleInfo.path))
+                    return false
+                end
+                
+                local moduleFunc, err = load(moduleContent)
+                if not moduleFunc then
+                    print(string.format("^1[MODULE SYSTEM] Failed to parse module %s: %s^7", 
+                        moduleInfo.name, err))
+                    return false
+                end
+                
+                local moduleObj = moduleFunc()
+                if not moduleObj then
+                    print(string.format("^1[MODULE SYSTEM] Module %s did not return anything^7", 
+                        moduleInfo.name))
+                    return false
+                end
+                
+                modules[moduleInfo.name] = moduleObj
+                
+                if moduleInfo.global then
+                    _G[moduleInfo.name] = moduleObj
+                end
+                
+                print(string.format("^2[MODULE SYSTEM] Loaded module: %s^7", moduleInfo.name))
+                return true
+            end)
+            
+            if not status or not result then
+                success = false
+                print(string.format("^1[MODULE SYSTEM] Error loading module %s: %s^7", 
+                    moduleInfo.name, tostring(result)))
+            end
+            
+            ::continue::
         end
-        
-        local status, result = pcall(function()
-            local moduleContent = LoadResourceFile(GetCurrentResourceName(), moduleInfo.path)
-            if not moduleContent then
-                print(string.format("^1[MODULE SYSTEM] Failed to load module %s: File not found at %s^7", 
-                    moduleInfo.name, moduleInfo.path))
-                return false
+    end
+    
+    -- Then load the remaining modules
+    for _, moduleInfo in ipairs(moduleList) do
+        if moduleInfo.name ~= "Utils" and moduleInfo.name ~= "HeistConfig" and moduleInfo.name ~= "ErrorHandler" then
+            if (moduleInfo.isServer and not IsDuplicityVersion()) or 
+               (moduleInfo.isClient and IsDuplicityVersion()) then
+                goto continue
             end
             
-            local moduleFunc, err = load(moduleContent)
-            if not moduleFunc then
-                print(string.format("^1[MODULE SYSTEM] Failed to parse module %s: %s^7", 
-                    moduleInfo.name, err))
-                return false
+            local status, result = pcall(function()
+                local moduleContent = LoadResourceFile(GetCurrentResourceName(), moduleInfo.path)
+                if not moduleContent then
+                    print(string.format("^1[MODULE SYSTEM] Failed to load module %s: File not found at %s^7", 
+                        moduleInfo.name, moduleInfo.path))
+                    return false
+                end
+                
+                local moduleFunc, err = load(moduleContent)
+                if not moduleFunc then
+                    print(string.format("^1[MODULE SYSTEM] Failed to parse module %s: %s^7", 
+                        moduleInfo.name, err))
+                    return false
+                end
+                
+                local moduleObj = moduleFunc()
+                if not moduleObj then
+                    print(string.format("^1[MODULE SYSTEM] Module %s did not return anything^7", 
+                        moduleInfo.name))
+                    return false
+                end
+                
+                modules[moduleInfo.name] = moduleObj
+                
+                if moduleInfo.global then
+                    _G[moduleInfo.name] = moduleObj
+                end
+                
+                print(string.format("^2[MODULE SYSTEM] Loaded module: %s^7", moduleInfo.name))
+                return true
+            end)
+            
+            if not status or not result then
+                success = false
+                print(string.format("^1[MODULE SYSTEM] Error loading module %s: %s^7", 
+                    moduleInfo.name, tostring(result)))
             end
             
-            local moduleObj = moduleFunc()
-            if not moduleObj then
-                print(string.format("^1[MODULE SYSTEM] Module %s did not return anything^7", 
-                    moduleInfo.name))
-                return false
-            end
-            
-            modules[moduleInfo.name] = moduleObj
-            
-            if moduleInfo.global then
-                _G[moduleInfo.name] = moduleObj
-            end
-            
-            print(string.format("^2[MODULE SYSTEM] Loaded module: %s^7", moduleInfo.name))
-            return true
-        end)
-        
-        if not status or not result then
-            success = false
-            print(string.format("^1[MODULE SYSTEM] Error loading module %s: %s^7", 
-                moduleInfo.name, tostring(result)))
+            ::continue::
         end
-        
-        ::continue::
     end
     
     initialized = success
@@ -122,9 +175,23 @@ function ModuleSystem.GetModule(name)
     return modules[name]
 end
 
+-- Export the Utils module first as it's a dependency
+exports('GetSharedUtils', function()
+    if not initialized then
+        ModuleSystem.Initialize()
+    end
+    return modules["Utils"]
+end)
+
+-- Setup remaining exports after Utils is available
 for _, moduleInfo in ipairs(moduleList) do
     if (moduleInfo.isServer and not IsDuplicityVersion()) or 
        (moduleInfo.isClient and IsDuplicityVersion()) then
+        goto continue
+    end
+    
+    -- Skip Utils as it's already exported
+    if moduleInfo.name == "Utils" then
         goto continue
     end
     

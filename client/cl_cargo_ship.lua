@@ -611,7 +611,7 @@ function SetupEscapePoint()
     })
     
     table.insert(heistState.zones, zoneId)
-}
+end
 
 -- Complete the heist
 function CompleteHeist()
@@ -633,7 +633,7 @@ function CompleteHeist()
     
     -- Clean up heist
     CleanupHeist()
-}
+end
 
 -- Start heist timer
 function StartHeistTimer()
@@ -664,7 +664,7 @@ function StartHeistTimer()
             end
         end
     end)
-}
+end
 
 -- Draw timer HUD
 function DrawTimerHUD(minutes, seconds)
@@ -689,7 +689,7 @@ function DrawTimerHUD(minutes, seconds)
     SetTextCentre(false)
     AddTextComponentString(lootText)
     DrawText(0.9, 0.14)
-}
+end
 
 -- Handle alarm trigger
 RegisterNetEvent('hcyk_heists:cargo_ship:alarmTriggered')
@@ -719,7 +719,7 @@ AddEventHandler('hcyk_heists:cargo_ship:alarmTriggered', function()
         StopSound(alarmSoundId)
         ReleaseSoundId(alarmSoundId)
     end)
-}
+end)
 
 -- Sync loot state
 RegisterNetEvent('hcyk_heists:cargo_ship:syncLoot')
@@ -759,7 +759,7 @@ function CleanupHeist()
         end
     end
     heistState.guards = {}
-}
+end
 
 -- Clear all heist blips
 function ClearHeistBlips()
